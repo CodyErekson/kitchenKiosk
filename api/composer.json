@@ -1,0 +1,33 @@
+{
+    "name": "Kitchen Kiosk",
+    "description": "A family-centric household planning hub. Intended to be run either on a Rasperry Pi or at least through a touch-enabled screen via a browser on a Raspberry Pi.",
+    "keywords": ["Kitchen Kiosk Planner"],
+    "homepage": "http://kitchenkiosk.co",
+    "license": "MIT",
+    "authors": [{
+        "name": "Cody Erekson",
+        "role": "Developer",
+        "email": "cody@erekson.org",
+        "homepage": "http://codyerekson.me"
+        }
+    ],
+    "require": {
+        "php": ">= 5.4.0",
+        "symfony/yaml": "~2.5",
+        "monolog/monolog": "1.13.*@dev",
+        "luracast/restler": "3.0.*",
+        "hassankhan/config": "0.8.2",
+        "swiftmailer/swiftmailer": "5.4.0",
+        "ruudk/twitter-oauth": "1.0.*",
+        "raveren/kint": "1.0.2",
+        "firebase/php-jwt": "^2.0",
+        "firebase/token-generator": "2.0.1",
+        "guzzle/guzzle":"~3.1.1",
+        "bshaffer/oauth2-server-php":"v1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Chillem\\KitchenKiosk": "vendor/"
+        }
+    }
+}
