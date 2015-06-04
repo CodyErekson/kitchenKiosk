@@ -1,0 +1,55 @@
+# Package Manager Components #
+##############################
+/bower_components/
+node_modules/
+
+!.gitignore
+
+# Application Specific #
+#######################
+test.php
+api/vendor/
+error_log
+*.log
+api/config.json
+composer.phar
+composer.lock
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+*.swp
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+*.db
+*.db/
+*.csv
+
+# OS generated files #
+######################
+Icon?
+ehthumbs.db
+Thumbs.db
