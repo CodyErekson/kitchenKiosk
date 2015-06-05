@@ -16,6 +16,7 @@
         "symfony/yaml": "~2.5",
         "monolog/monolog": "1.13.*@dev",
         "luracast/restler": "3.0.*",
+        "luracast/explorer":"*",
         "hassankhan/config": "0.8.2",
         "swiftmailer/swiftmailer": "5.4.0",
         "ruudk/twitter-oauth": "1.0.*",
@@ -23,11 +24,25 @@
         "firebase/php-jwt": "^2.0",
         "firebase/token-generator": "2.0.1",
         "guzzle/guzzle":"~3.1.1",
-        "bshaffer/oauth2-server-php":"v1.0"
+        "bshaffer/oauth2-server-php":"v1.0",
+        "herrera-io/pdo-log": "~1.0"
     },
+    "repositories":[
+        {
+            "type":"package",
+            "package":{
+                "name":"luracast/explorer",
+                "version":"v3.0.0",
+                "dist":{
+                    "type":"zip",
+                    "url":"https://github.com/Luracast/Restler-API-Explorer/zipball/v3.0.0"
+                }
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
-            "Chillem\\KitchenKiosk": "vendor/"
+            "KitchenKiosk\\": "vendor/Chillem/KitchenKiosk/"
         }
     }
 }
