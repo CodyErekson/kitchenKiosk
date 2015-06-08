@@ -1,5 +1,5 @@
 <?php
-//A class to create a PDO connection specific to a given database and pass it around in other classes as a singleton object
+    // Database handler class; requires a PDO database handle
 
 namespace KitchenKiosk\Database;
 
@@ -7,44 +7,16 @@ use KitchenKiosk\Exception\DatabaseException;
 
 class DB {
 
-    private static $singleton;
-
-    public $dbh;
+    public $DB; // Database handle
     public $error = array();
 
     //let's connect to the database here
-    private function __construct($dbhost=null, $dbname=null, $dbuser=null, $dbpass=null) {
-        if ( $dbhost == null || $dbname == null || $dbuser == null || $dbpass == null ) {
-            throw new \Exception(__METHOD__ . " Connection information must be passed in when the object is first created.");
-        }
-        try {
-            $this->dbh = new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
-            $this->dbh->setAttribute (\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        } catch (\PDOException $e) {
-            throw new DatabaseException(__METHOD__ . " -- " . $e->getMessage(), "10");
-        }
-    }
-
-    public static function obtain($dbhost=null, $dbname=null, $dbuser=null, $dbpass=null) {
-        //get the PDO handle
-        if ( !self::$singleton ) {
-            self::$singleton = new DB($dbhost, $dbname, $dbuser, $dbpass);
-        }
-
-        return self::$singleton->dbh;
-    }
-
-    public static function pass($dbhost=null, $dbname=null, $dbuser=null, $dbpass=null){
-        //get this class itself
-        if ( !self::$singleton ) {
-            self::$singleton = new DB($dbhost, $dbname, $dbuser, $dbpass);
-        }
-
-        return self::$singleton;
+    private function __construct(PDO $DB ) {
+        $this->DB = $DB;
     }
 
     public function __call($name, $arguments) {
-        throw new DatabaseException("Method " . $name . " does not exist, " . print_r($arguments, 1), "10");
+        throw new \BadMethodCallException("Method " . $name . " does not exist, " . print_r($arguments, 1));
     }
 
     /***** PUBLIC FUNCTIONS *******/
