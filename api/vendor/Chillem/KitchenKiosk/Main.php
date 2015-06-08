@@ -18,13 +18,10 @@ use Monolog\Logger;
 use Monolog\Registry as LoggerRegistry;
 use Monolog\ErrorHandler as LoggerErrorHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SwiftMailerHandler;
-
+use Monolog\Handler\SyslogHandler;
+use Monolog\Handler\RotatingFileHandler;
+use Monolog\Handler\BufferHandler;
 use Monolog\Formatter\LineFormatter;
-use Monolog\Formatter\JsonFormatter;
-use Monolog\Formatter\ScalarFormatter;
-use Monolog\Formatter\HtmlFormatter;
-use Monolog\Formatter\NormalizerFormatter;
 
 use Monolog\Processor\PsrLogMessageProcessor;
 use Monolog\Processor\UidProcessor;
@@ -38,7 +35,7 @@ class Main {
 
     private $configFile;
 
-    public $container; // a dependency injection container
+    public $c; // a dependency injection container
 
     public function __construct($configFile=null){
         $this->configFile = $configFile;
@@ -46,7 +43,7 @@ class Main {
             throw new \UnexpectedValueException("Config file " . $this->configFile . " does not exist.");
         }
         //create DIC
-        $this->container = new Container();
+        $this->c = new Container();
 
         // load the config file values; later we'll get the rest from the database
         $this->prepareConfig();
@@ -73,8 +70,8 @@ class Main {
      * Load the config file and store in DIC
      */
     private function prepareConfig(){
-        $this->container['configFile'] = $this->configFile;
-        $this->container['config'] = function($c){
+        $this->c['configFile'] = $this->configFile;
+        $this->c['config'] = function($c){
             return Config::load($c['configFile']);
         };
     }
@@ -84,14 +81,14 @@ class Main {
      */
     private function prepareDependency(){
         // Utility functions
-        $this->container['general'] = function($c){
-            $general = new General();
+        $this->c['general'] = function($c){
+            return new Utility\General();
         };
-        $this->container['display'] = function($c){
-            $display = new Display();
+        $this->c['display'] = function($c){
+            return new Utility\Display();
         };
-        $this->container['security'] = function($c){
-            $security = new Security();
+        $this->c['security'] = function($c){
+            return new Utility\Security();
         };
 
     }
@@ -100,34 +97,71 @@ class Main {
      * Create logger, define channel, set up streams, and store in DIC
      */
     private function prepareLogging(){
-        $this->container['logger'] = function ($c) {
+        $this->c['logger'] = function ($c) {
             $logger = new Logger($c['config']->get("logs.primary_channel")); # Main channel
             # PSR 3 log message formatting for all handlers
             $logger->pushProcessor(new PsrLogMessageProcessor());
             return $logger;
         }; 
-        $this->container->extend('logger', function ($logger, $c) {
-            $display = $c['display'];
-            $width = getenv('COLUMNS') ?: 60; # Console width from env, or 60 chars.
-            $separator = str_repeat('━', $width); # A nice separator line
-            $format  = "{" . $display("bold") . "}";
-            $format .= "{" . $display("green") . "}[%datetime%]";
-            $format .= "{" . $display("white") . "}[%channel%.";
-            $format .= "{" . $display("yellow") . "}%level_name%";
-            $format .= "{" . $display("white") . "}]";
-            $format .= "{" . $display("blue") . "}[UID:%extra.uid%]";
-            $format .= "{" . $display("purple") . "}[PID:%extra.process_id%]";
-            $format .= "{" . $display("reset") . "}:".PHP_EOL;
-            $format .= "%message%".PHP_EOL;
-            $format .= "{" . $display("gray") . "}{$separator}{" . $display("reset") . "}".PHP_EOL;
-            $handler = new StreamHandler($c['config']->get("logs.stream_handler"));
+        // display logging output to command line if enabled in config
+        if ( (bool)$this->c['config']->get("debug.cli") ){
+            $this->c->extend('logger', function ($logger, $c) {
+                $display = $c['display'];
+                $width = getenv('COLUMNS') ?: 60; # Console width from env, or 60 chars.
+                $separator = str_repeat('━', $width); # A nice separator line
+                $format  = $display->color("bold");
+                $format .= $display->color("green") . "[%datetime%]";
+                $format .= $display->color("white") . "[%channel%.";
+                $format .= $display->color("yellow") . "%level_name%";
+                $format .= $display->color("white") . "]";
+                $format .= $display->color("blue") . "[UID:%extra.uid%]";
+                $format .= $display->color("purple") . "[PID:%extra.process_id%]";
+                $format .= $display->color("reset") . ":".PHP_EOL;
+                $format .= "%message%".PHP_EOL;
+                $format .= $display->color("gray") . $separator . $display->color("reset") . PHP_EOL;
+                $handler = new StreamHandler($c['config']->get("logs.stream_handler"));
+                $handler->pushProcessor(new UidProcessor(24));
+                $handler->pushProcessor(new ProcessIdProcessor());
+                $dateFormat = 'H:i:s'; # Just the time for command line
+                $allowInlineLineBreaks = (bool)$c['config']->get("logs.allow_inline_linebreaks");
+                $formatter = new LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
+                $handler->setFormatter($formatter);
+                $logger->pushHandler($handler);
+                return $logger;
+            });
+        }
+        // log system condition to syslog if enabled in config
+        if ( (bool)$this->c['config']->get("debug.system") ){
+            $this->c->extend('logger', function ($logger, $c) {
+                $ident = $logger->getName();
+                $facility = LOG_USER;
+                $option = LOG_PID | LOG_CONS | LOG_ODELAY;
+                $handler = new SyslogHandler($ident, $facility, Logger::DEBUG, true, $option);
+                $handler->pushProcessor(new UidProcessor(24));
+                $handler->pushProcessor(new MemoryUsageProcessor());
+                $handler->pushProcessor(new MemoryPeakUsageProcessor());
+                $handler->pushProcessor(new ProcessIdProcessor());
+                $handler->pushProcessor(new WebProcessor());
+                $handler->pushProcessor(new IntrospectionProcessor());
+                $logger->pushHandler($handler);
+                return $logger;
+            });
+        }
+        // primary logging handler; rotating log file inside BufferHandler
+        $this->c->extend('logger', function ($logger, $c) {
+            $filename = $c['config']->get("directories.root") . $c['config']->get("directories.log") . $c['config']->get("logs.default_log");
+            $handler = new RotatingFileHandler($filename, 24, Logger::NOTICE, true, 0644, true);
+            $handler->setFilenameFormat('{filename}-{date}', 'Y-m-d');
+            $format = "[%datetime%][%channel%][%level_name%][%extra.uid%]: %message%\n";
+            $handler->setFormatter(new LineFormatter($format, 'U'));
             $handler->pushProcessor(new UidProcessor(24));
-            $handler->pushProcessor(new ProcessIdProcessor());
-            $dateFormat = 'H:i:s'; # Just the time for command line
-            $allowInlineLineBreaks = (bool)$c['config']->get("logs.allow_inline_linebreaks");
-            $formatter = new LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
-            $handler->setFormatter($formatter);
-            $logger->pushHandler($handler);
+            $logger->pushHandler(new BufferHandler($handler));
+            return $logger;
+        });
+        // finally register the loggers
+        $this->c->extend('logger', function ($logger, $c) {
+            LoggerRegistry::addLogger($logger);
+            LoggerErrorHandler::register($logger);
             return $logger;
         });
     }
