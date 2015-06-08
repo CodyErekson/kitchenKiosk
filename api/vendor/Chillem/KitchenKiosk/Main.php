@@ -8,9 +8,6 @@ use KitchenKiosk\Database\DB;
 use KitchenKiosk\Exception\SystemException;
 
 use DateTime;
-use Swift_Mailer;
-use Swift_Message;
-use Swift_SmtpTransport;
 use Pimple\Container;
 use Noodlehaus\Config;
 
@@ -22,14 +19,9 @@ use Monolog\Handler\SyslogHandler;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\BufferHandler;
 use Monolog\Formatter\LineFormatter;
-
 use Monolog\Processor\PsrLogMessageProcessor;
 use Monolog\Processor\UidProcessor;
-use Monolog\Processor\WebProcessor;
-use Monolog\Processor\MemoryPeakUsageProcessor;
-use Monolog\Processor\MemoryUsageProcessor;
 use Monolog\Processor\ProcessIdProcessor;
-use Monolog\Processor\IntrospectionProcessor;
 
 class Main {
 
@@ -48,13 +40,16 @@ class Main {
         // load the config file values; later we'll get the rest from the database
         $this->prepareConfig();
 
-        // populate dic with function classes
+        // populate DIC with function classes
         $this->prepareDependency();
 
         $this->prepareLogging();
+
+        $this->prepareErrorHandler();
+
+        $this->prepareDatabaseHandler();
         //TODO
-        /* logging
-         * error handling
+        /*
          * mailer
          * database
          * session
@@ -130,23 +125,6 @@ class Main {
                 return $logger;
             });
         }
-        // log system condition to syslog if enabled in config
-        if ( (bool)$this->c['config']->get("debug.system") ){
-            $this->c->extend('logger', function ($logger, $c) {
-                $ident = $logger->getName();
-                $facility = LOG_USER;
-                $option = LOG_PID | LOG_CONS | LOG_ODELAY;
-                $handler = new SyslogHandler($ident, $facility, Logger::DEBUG, true, $option);
-                $handler->pushProcessor(new UidProcessor(24));
-                $handler->pushProcessor(new MemoryUsageProcessor());
-                $handler->pushProcessor(new MemoryPeakUsageProcessor());
-                $handler->pushProcessor(new ProcessIdProcessor());
-                $handler->pushProcessor(new WebProcessor());
-                $handler->pushProcessor(new IntrospectionProcessor());
-                $logger->pushHandler($handler);
-                return $logger;
-            });
-        }
         // primary logging handler; rotating log file inside BufferHandler
         $this->c->extend('logger', function ($logger, $c) {
             $filename = $c['config']->get("directories.root") . $c['config']->get("directories.log") . $c['config']->get("logs.default_log");
@@ -166,10 +144,67 @@ class Main {
         });
     }
 
+    /*
+     * Establish error handler
+     */
+    private function prepareErrorHandler(){
+        $this->c['whoops'] = function ($c) {
+            // stop PHP from polluting exception messages with html that Whoops escapes and prints.
+            ini_set('html_errors', false);
+            return new \Whoops\Run; 
+        };
+        // Pretty page handler
+        $this->c->extend('whoops', function ($whoops, $c) {
+            $handler = new \Whoops\Handler\PrettyPageHandler();
+            $handler->setEditor('sublime');
+            $whoops->pushHandler($handler);
+            return $whoops;
+        });
+        // Plain text handler for our logger
+        $this->c->extend('whoops', function ($whoops, $c) {
+            $handler = new \Whoops\Handler\PlainTextHandler();
+            $handler->onlyForCommandLine(false);
+            $handler->outputOnlyIfCommandLine(false);
+            $handler->loggerOnly(true);
+            $handler->setLogger($c['logger']);
+            $whoops->pushHandler($handler);
+            return $whoops;
+        });
+        // Responds to AJAX requests with JSON formatted exceptions
+        $this->c->extend('whoops', function ($whoops, $c) {
+            $handler = new \Whoops\Handler\JsonResponseHandler();
+            $handler->onlyForAjaxRequests(true);
+            $handler->addTraceToOutput(true);
+            $whoops->pushHandler($handler);
+            return $whoops;
+        });
+        $whoops = $this->c['whoops'];
+        $whoops->register();
+    }
+
+/*
     //start the session
     private function startSession(){
         session_start();
         if (!session_id()) session_regenerate_id();
+    }
+*/
+
+    /*
+     * Initialize a PDO handle and store it in DIC
+     */
+    private function prepareDatabaseHandle(){
+        $this->c['DB'] = function($c){
+            $dbhost = $c['config']->get("database.host");
+            $dbname = $c['config']->get("database.database");
+            $dbuser = $c['config']->get("database.user");
+            $dbpass = $c['config']->get("database.password");
+            return new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
+        };
+        $this->c->extend('DB', function($DB, $c) {
+            $DB->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            return $DB;
+        });
     }
 
     /*
@@ -206,11 +241,5 @@ class Main {
         }
     }
 
-    //create main logger
-    private function createLogger(){
-        $this->log = new Logger($this->config->get("logs.default_log"));
-        $file = $this->config->get("directories.root") . $this->config->get("directories.log") . "/" . $this->config->get("logs.default_log");
-        $this->log->pushHandler(new StreamHandler($file, Logger::WARNING));
-    }
     */
 }

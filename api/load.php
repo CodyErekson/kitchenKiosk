@@ -16,7 +16,6 @@
 
     $logger = $main->c['logger'];
     $logger->debug('Monolog is configured.', [$logger]);
-    $logger->warning('This is a warning.', [$logger]);
-    $logger->error('And this is an error.', [$logger]);
 
+    throw new \Exception("Uh oh!");
 ?>
