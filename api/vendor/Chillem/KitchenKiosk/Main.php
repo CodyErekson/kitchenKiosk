@@ -5,9 +5,8 @@ namespace KitchenKiosk;
 
 use KitchenKiosk\Utility;
 use KitchenKiosk\Database\DB;
-use KitchenKiosk\Exception\SystemException;
+use KitchenKiosk\Exception\DatabaseException;
 
-use DateTime;
 use Pimple\Container;
 use Noodlehaus\Config;
 
@@ -39,21 +38,22 @@ class Main {
 
         // load the config file values; later we'll get the rest from the database
         $this->prepareConfig();
-
         // populate DIC with function classes
         $this->prepareDependency();
-
+        // set up application logging
         $this->prepareLogging();
-
+        // register error/exception handler
         $this->prepareErrorHandler();
-
+        // initialize database handle
         $this->prepareDatabaseHandler();
+        // retrieve config options stored in database
+        $this->finalizeConfig();
+
         //TODO
         /*
-         * mailer
-         * database
-         * session
-         * config
+         * mailer <-- maybe
+         * session <-- maybe
+         * oauth <-- maybe
          */
     }
 
@@ -69,6 +69,10 @@ class Main {
         $this->c['config'] = function($c){
             return Config::load($c['configFile']);
         };
+        $this->c->extend('config', function ($config, $c) {
+            $config->set("debug.debug", "false");
+            return $config;
+        });
     }
 
     /*
@@ -193,53 +197,52 @@ class Main {
     /*
      * Initialize a PDO handle and store it in DIC
      */
-    private function prepareDatabaseHandle(){
-        $this->c['DB'] = function($c){
-            $dbhost = $c['config']->get("database.host");
-            $dbname = $c['config']->get("database.database");
-            $dbuser = $c['config']->get("database.user");
-            $dbpass = $c['config']->get("database.password");
-            return new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
+    private function prepareDatabaseHandler(){
+        $this->c['PDO'] = function($c){
+            try{
+                $dbhost = $c['config']->get("database.host");
+                $dbname = $c['config']->get("database.database");
+                $dbuser = $c['config']->get("database.user");
+                $dbpass = $c['config']->get("database.password");
+                return new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
+            } catch ( \PDOException $e ){
+                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            }
         };
-        $this->c->extend('DB', function($DB, $c) {
-            $DB->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            return $DB;
+        $this->c->extend('PDO', function($PDO, $c) {
+            try {
+                $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                return $PDO;
+            } catch ( \PDOException $e ){
+                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            }
         });
     }
 
     /*
-    //load configuration from database
-    private function loadConfig(){
-        $DB = DB::pass();
-        $conf = $DB->loadConfig();
-        if ( count($conf) > 0 ){
-            foreach($conf as $c){
-                $this->config->set($c['cluster'] . "." . $c['name'],$c['value']);
-            }
-        } else {
-            throw new SystemException("No database configuration");
-        }
-    }
-
-    //init PDO singleton and handle
-    private function connectDB(){
-        try {
-            $DBh = DB::obtain(
-                $this->config->get('database.host'),
-                $this->config->get('database.database'),
-                $this->config->get('database.user'),
-                $this->config->get('database.password')
-            );
-            $DB = DB::pass();
-            //clear config data from memory
-            $this->config->set('database.host',null);
-            $this->config->set('database.database',null);
-            $this->config->set('database.user',null);
-            $this->config->set('database.password',null);
-        } catch ( Exception $e ){
-            throw new SystemException($e->getMessage());
-        }
-    }
-
+    * Load final configuration options from database
     */
+    private function finalizeConfig(){
+        $config = $this->c['config'];
+        $PDO = $this->c['PDO'];
+        $DB = new Database\DB($PDO);
+        try {
+            $conf = $DB->loadConfig();
+        } catch ( \PDOException $e ){
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+        }
+        if ( count($conf) > 0 ){
+            foreach($conf as $e){
+                $config->set($e['cluster'] . "." . $e['name'],$e['value']);
+            }
+            // No longer need database connection information residing in memory
+            $config->set('database.host',null);
+            $config->set('database.database',null);
+            $config->set('database.user',null);
+            $config->set('database.password',null);
+        } else {
+            throw new \UnexpectedValueException("No database configuration");
+        }
+    }
+
 }
