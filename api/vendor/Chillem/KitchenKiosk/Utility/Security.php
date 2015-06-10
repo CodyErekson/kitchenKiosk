@@ -1,10 +1,13 @@
 <?php
-// class containing all security/password related functions
 
 namespace KitchenKiosk\Utility;
 use \KitchenKiosk\Initialize;
 use \KitchenKiosk\Database\DB;
 
+/*
+ * Legacy class -- keeping for reference until JWT is fully implemented
+ * All security/password related functions
+ */
 class Security {
 
     // These constants may be changed without breaking existing hashes.

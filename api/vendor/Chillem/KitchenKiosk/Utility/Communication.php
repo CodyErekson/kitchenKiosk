@@ -1,11 +1,12 @@
 <?php
-    // Utility class intended to handle all outgoing and incoming communication; ie mail
 
 namespace KitchenKiosk\Utility;
-use \KitchenKiosk\Initialize;
 
 //TODO -- replace phplist support with swiftmailer here
 
+/*
+ * Utility class intended to handle all outgoing and incoming communication; ie mail
+ */
 class Communication {
 
     private $config;
@@ -16,8 +17,8 @@ class Communication {
 
     public function __construct() {
         //get the path to and include the PHPMailer autoloader
-        $this->main = Initialize::obtain();
-        $this->config = $this->main->config;
+        //$this->main = Initialize::obtain();
+        //$this->config = $this->main->config;
         require_once $this->config->get('directories.root') . "/api/vendor/phpmailer/phpmailer/PHPMailerAutoload.php";
         $this->mail = new \PHPMailer;
     }

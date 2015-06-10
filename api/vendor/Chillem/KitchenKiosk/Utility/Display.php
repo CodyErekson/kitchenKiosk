@@ -1,8 +1,11 @@
 <?php
-//functions used to generate page display elements
 
 namespace KitchenKiosk\Utility;
 
+/*
+ * Utility methods used to generate page or CLI display elements
+ * No database calls in here
+ */
 class Display {
 
     /**
@@ -21,7 +24,7 @@ class Display {
      *
      * @return string
      */
-    public function color($color){
+    public function cliFormat($color){
         $map = [
             'gray'   => "\033[37m",
             'green'  => "\033[32m",
@@ -38,33 +41,52 @@ class Display {
         return false;
     }
 
+    /**
+     *  Determine the suffix to append to the end of a number for display purposes
+     *
+     *  @param int $number Input number
+     *
+     *  @return string Number with ordinal suffix appended
+     */
+    public function ordinalSuffix($number){
+        $ones = $number % 10;
+        $tens = (int)floor( $number / 10 ) % 10;
+        if ( $tens == 1 ) {
+            $suff = "th";
+        } else {
+            switch ($ones){
+                case 1:
+                    $suff = "st";
+                    break;
+                case 2:
+                    $suff = "nd";
+                    break;
+                case 3:
+                    $suff = "rd";
+                    break;
+                default:
+                    $suff = "th";
+            }
+        }
+        return $number . $suff;
+    }
 
     /**
-     * Create a thumbnail display
+     * Generate a random string
      *
-     * @param string $picture Path to image file
-     *
-     * @param string $caption Optional caption
+     * @param int $length Length of output string
+     * @param string $chars Character pool to draw from
      *
      * @return string
      */
-    public function displayThumbnail($picture, $caption=false){
-        //create a thumbnail display
-        $main = Initialize::obtain();
-        $DB = DB::pass();
-        $ppath = $main->config->get('directories', 'pictures');
-
-        $ret = "<div class=\"col-lg-3 col-md-6 hero-feature\">
-                <div class=\"thumbnail\">
-                    <img class=\"frnt-thmb\" src=\"" . $ppath . "/" . $picture['generated'] . "\" title=\"" . $picture['filename'] . "\" data-toggle=\"lightbox\" data-remote=\"" . $ppath . "/" . $picture['generated'] . "\" />";
-        if ( $caption ){
-            $ret .= "   <div class=\"caption\">
-                        <h3>" . $caption . "</h3>";
+    public function generateString( $length=10, $chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" ) {
+        $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        $size = strlen( $chars );
+        $str = "";
+        for( $i = 0; $i < $length; $i++ ) {
+            $str .= $chars[ rand( 0, $size - 1 ) ];
         }
-        $ret .= "   </div>
-                </div>
-            </div>";
-        return $ret;
+        return $str;
     }
 
 }
