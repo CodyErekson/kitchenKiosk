@@ -1,5 +1,4 @@
 <?php
-//Initialize the entire PHP side of the system -- should be called before just about anything else runs
 
 namespace KitchenKiosk;
 
@@ -14,7 +13,6 @@ use Monolog\Logger;
 use Monolog\Registry as LoggerRegistry;
 use Monolog\ErrorHandler as LoggerErrorHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SyslogHandler;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\BufferHandler;
 use Monolog\Formatter\LineFormatter;
@@ -22,6 +20,19 @@ use Monolog\Processor\PsrLogMessageProcessor;
 use Monolog\Processor\UidProcessor;
 use Monolog\Processor\ProcessIdProcessor;
 
+/*
+ * Bootstrap entire framework:
+ * 1. Get initial configuration options from ini file
+ * 2. Instantiate dependency injection container
+ * 3. Implement application-wide logging
+ * 4. Register error/exception handler
+ * 5. Connect to database and store handle
+ * 6. Retrieve remainder of configuration from database
+ *
+ * @class Main
+ *
+ * @access protected
+ */
 class Main {
 
     private $configFile;
@@ -53,7 +64,8 @@ class Main {
         /*
          * mailer <-- maybe
          * session <-- maybe
-         * oauth <-- maybe
+         * JSON web tokens <-- more likely
+         * oauth <-- certainly
          */
     }
 
@@ -75,22 +87,18 @@ class Main {
         });
     }
 
-    /*
+    /*  
      * Populate dependency injector container with known global dependencies
      */
     private function prepareDependency(){
         // Utility functions
-        $this->c['general'] = function($c){
-            return new Utility\General();
-        };
         $this->c['display'] = function($c){
             return new Utility\Display();
         };
         $this->c['security'] = function($c){
             return new Utility\Security();
         };
-
-    }
+    } 
 
     /*
      * Create logger, define channel, set up streams, and store in DIC
@@ -108,16 +116,16 @@ class Main {
                 $display = $c['display'];
                 $width = getenv('COLUMNS') ?: 60; # Console width from env, or 60 chars.
                 $separator = str_repeat('━', $width); # A nice separator line
-                $format  = $display->color("bold");
-                $format .= $display->color("green") . "[%datetime%]";
-                $format .= $display->color("white") . "[%channel%.";
-                $format .= $display->color("yellow") . "%level_name%";
-                $format .= $display->color("white") . "]";
-                $format .= $display->color("blue") . "[UID:%extra.uid%]";
-                $format .= $display->color("purple") . "[PID:%extra.process_id%]";
-                $format .= $display->color("reset") . ":".PHP_EOL;
+                $format  = $display->cliFormat("bold");
+                $format .= $display->cliFormat("green") . "[%datetime%]";
+                $format .= $display->cliFormat("white") . "[%channel%.";
+                $format .= $display->cliFormat("yellow") . "%level_name%";
+                $format .= $display->cliFormat("white") . "]";
+                $format .= $display->cliFormat("blue") . "[UID:%extra.uid%]";
+                $format .= $display->cliFormat("purple") . "[PID:%extra.process_id%]";
+                $format .= $display->cliFormat("reset") . ":".PHP_EOL;
                 $format .= "%message%".PHP_EOL;
-                $format .= $display->color("gray") . $separator . $display->color("reset") . PHP_EOL;
+                $format .= $display->cliFormat("gray") . $separator . $display->cliFormat("reset") . PHP_EOL;
                 $handler = new StreamHandler($c['config']->get("logs.stream_handler"));
                 $handler->pushProcessor(new UidProcessor(24));
                 $handler->pushProcessor(new ProcessIdProcessor());
@@ -160,7 +168,8 @@ class Main {
         // Pretty page handler
         $this->c->extend('whoops', function ($whoops, $c) {
             $handler = new \Whoops\Handler\PrettyPageHandler();
-            $handler->setEditor('sublime');
+            //$handler->setEditor('sublime');
+            $handler->setEditor('xdebug');
             $whoops->pushHandler($handler);
             return $whoops;
         });
@@ -186,14 +195,6 @@ class Main {
         $whoops->register();
     }
 
-/*
-    //start the session
-    private function startSession(){
-        session_start();
-        if (!session_id()) session_regenerate_id();
-    }
-*/
-
     /*
      * Initialize a PDO handle and store it in DIC
      */
@@ -206,7 +207,7 @@ class Main {
                 $dbpass = $c['config']->get("database.password");
                 return new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
             } catch ( \PDOException $e ){
-                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
             }
         };
         $this->c->extend('PDO', function($PDO, $c) {
@@ -214,7 +215,7 @@ class Main {
                 $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
                 return $PDO;
             } catch ( \PDOException $e ){
-                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
             }
         });
     }
@@ -224,12 +225,15 @@ class Main {
     */
     private function finalizeConfig(){
         $config = $this->c['config'];
-        $PDO = $this->c['PDO'];
-        $DB = new Database\DB($PDO);
+        $this->c['DB'] = function($c){
+            $PDO = $c['PDO'];
+            return new Database\DB($PDO);
+        };
+        $DB = $this->c['DB'];
         try {
             $conf = $DB->loadConfig();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         if ( count($conf) > 0 ){
             foreach($conf as $e){
@@ -244,5 +248,6 @@ class Main {
             throw new \UnexpectedValueException("No database configuration");
         }
     }
+
 
 }
