@@ -30,7 +30,7 @@ class DB {
             $sth->closeCursor();
             return $result;
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
     }
 
@@ -43,7 +43,7 @@ class DB {
             $row = $sth->fetch(\PDO::FETCH_ASSOC);
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $row;
     }
@@ -57,7 +57,7 @@ class DB {
             $row = $sth->fetch(\PDO::FETCH_ASSOC);
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $row;
     }
@@ -71,7 +71,7 @@ class DB {
             $row = $sth->fetch(\PDO::FETCH_ASSOC);
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $row;
     }
@@ -85,7 +85,7 @@ class DB {
             $row = $sth->fetch(\PDO::FETCH_ASSOC);
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $row;
     }
@@ -99,7 +99,7 @@ class DB {
             $row = $sth->fetch(\PDO::FETCH_ASSOC);
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $row;
     }
@@ -115,7 +115,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $this->DB->lastInsertId();
     }
@@ -131,7 +131,7 @@ class DB {
             }
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $result;
     }
@@ -149,7 +149,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -163,7 +163,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -185,7 +185,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $this->DB->lastInsertId();
     }
@@ -203,7 +203,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -221,7 +221,7 @@ class DB {
             }
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -238,7 +238,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -251,7 +251,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return true;
     }
@@ -265,7 +265,7 @@ class DB {
             $sth->execute();
             $sth->closeCursor();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $this->DB->lastInsertId();
     }
@@ -293,7 +293,7 @@ class DB {
             $this->saveCookie($mid, $nc);
             $ret = json_encode(array("status" => "true", "cookie" => $nc));
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage(), "20");
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
         }
         return $ret;
     }
