@@ -1,7 +1,7 @@
 # Kitchen Kiosk
 A family-centric household planning hub. Intended to be run either on a Rasperry Pi or at least through a touch-enabled screen via a browser on a Raspberry Pi.
 
-The interface will be feature an Angular.js and Twitter Bootstrap driven dashboard. All data for the dashboard will be sent and retrieved via the fully stateless RESTful API.
+The interface will feature an Angular.js and Twitter Bootstrap driven dashboard. All data for the dashboard will be sent and retrieved via the fully stateless RESTful API.
 
 This system will interface with Google Calendar, email accounts, Facebook, various other social media utilities, automation services such as ifttt.com (If This Then That,) and a myriad of other external services in order to help bring the busy and hectic lives of a modern family together. 
 
