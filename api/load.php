@@ -14,10 +14,8 @@
 
     print_r($config);
 
-    /*
     $logger = $main->c['logger'];
     $logger->debug('Monolog is configured.', [$logger]);
 
-    throw new \Exception("Uh oh!");
-    */
+    //throw new \Exception("Uh oh!");
 ?>
