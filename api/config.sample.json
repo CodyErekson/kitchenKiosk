@@ -1,0 +1,45 @@
+{
+  "site": {
+    "title": "",
+    "short": "",
+    "url": "",
+    "path": "",
+    "protocol": "",
+    "description": "",
+    "author": ""
+  },
+  "directories": {
+    "root": "",
+    "web": "/public_html",
+    "log": "/log",
+    "dashboard": "/dashboard"
+  },
+  "database": {
+    "host": "HOSTNAME",
+    "database": "DATABASE",
+    "user": "USER",
+    "password": "PASSWORD"
+  },
+  "email": {
+    "host": "",
+    "username": "",
+    "password": "",
+    "port": "",
+    "address": ""
+  },
+  "debug": {
+    "cli": "true",
+    "debug": "",
+    "verbose": "",
+    "display": "",
+    "ip": ""
+  },
+  "logs": {
+    "primary_channel": "main",
+    "stream_handler": "php://stderr",
+    "allow_inline_linebreaks": "true",
+    "default_log": "/application.log",
+    "error_log": "/application.log",
+    "debug_log": "/application.log"
+  }
+}
