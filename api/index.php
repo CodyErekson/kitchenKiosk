@@ -7,7 +7,7 @@
     $r = new Restler(true,true);
     $r->addAPIClass('Luracast\\Restler\\Resources');
     $r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
-    $r->addAuthenicationClass('KitchenKiosk\\System\\TokenAuth');
+    $r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
     $r->handle();
 
 ?>
