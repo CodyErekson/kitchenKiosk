@@ -9,10 +9,13 @@ use Luracast\Restler\iAuthenticate;
  */
 class TokenAuth implements iAuthenticate {
 
-    function __isAllowed(){
+    public function __isAllowed(){
 
     }
 
+    public function __getWWWAuthenticateString(){
+
+    }
 }
 
 ?>
