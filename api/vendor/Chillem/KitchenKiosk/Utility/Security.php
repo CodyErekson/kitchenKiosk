@@ -2,7 +2,7 @@
 
 namespace KitchenKiosk\Utility;
 use \KitchenKiosk\Initialize;
-use \KitchenKiosk\Database\DB;
+use \KitchenKiosk\Database\Common;
 
 /*
  * Legacy class -- keeping for reference until JWT is fully implemented
