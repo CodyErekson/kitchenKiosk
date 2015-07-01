@@ -2,8 +2,7 @@
 
     namespace KitchenKiosk;
 
-    // Example of how to include this framework
-    // Also used as a handy test playground
+    // Initializer for framework
 
     ini_set('display_errors','1');
 
@@ -13,4 +12,5 @@
 
     $main = new Main($file); 
 
+    print_r($main->c->get('config'));
 ?>
