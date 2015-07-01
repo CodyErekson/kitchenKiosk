@@ -3,9 +3,10 @@
 namespace KitchenKiosk;
 
 use KitchenKiosk\Utility;
-use KitchenKiosk\Database\DB;
+use KitchenKiosk\Database\Common;
 use KitchenKiosk\Exception\DatabaseException;
 
+use DI\ContainerBuilder;
 use Pimple\Container;
 use Noodlehaus\Config;
 
@@ -37,7 +38,10 @@ class Main {
 
     private $configFile;
 
-    public $c; // a dependency injection container
+    public $p; // a dependency injection container
+
+    private $builder;
+    public $c; // PHP-DI dependency injection container
 
     public function __construct($configFile=null){
         $this->configFile = $configFile;
@@ -45,7 +49,12 @@ class Main {
             throw new \UnexpectedValueException("Config file " . $this->configFile . " does not exist.");
         }
         //create DIC
-        $this->c = new Container();
+        $this->p = new Container();
+
+        $this->builder = new \DI\ContainerBuilder;
+        $cache = new \Doctrine\Common\Cache\ApcCache();
+        $cache->setNamespace('KitchenKiosk');
+        $this->builder->setDefinitionCache($cache);
 
         // load the config file values; later we'll get the rest from the database
         $this->prepareConfig();
@@ -54,9 +63,13 @@ class Main {
         // set up application logging
         $this->prepareLogging();
         // register error/exception handler
-        $this->prepareErrorHandler();
+        //$this->prepareErrorHandler();
         // initialize database handle
         $this->prepareDatabaseHandler();
+
+        // The container has been prepared, let's actually build it now
+        $this->c = $this->builder->build();
+
         // retrieve config options stored in database
         $this->finalizeConfig();
 
@@ -77,14 +90,14 @@ class Main {
      * Load the config file and store in DIC
      */
     private function prepareConfig(){
-        $this->c['configFile'] = $this->configFile;
-        $this->c['config'] = function($c){
-            return Config::load($c['configFile']);
+        $this->p['configFile'] = $this->configFile;
+        $this->p['config'] = function($p){
+            return Config::load($p['configFile']);
         };
-        $this->c->extend('config', function ($config, $c) {
-            $config->set("debug.debug", "false");
-            return $config;
-        });
+        $this->builder->addDefinitions([
+            'configFile' => \DI\string($this->configFile),
+            'config' => \DI\object('\\Noodlehaus\\Config')->constructor(\DI\get('configFile'))
+        ]);
     }
 
     /*  
@@ -92,81 +105,72 @@ class Main {
      */
     private function prepareDependency(){
         // Utility functions
-        $this->c['display'] = function($c){
-            return new Utility\Display();
-        };
-        $this->c['security'] = function($c){
-            return new Utility\Security();
-        };
+        $this->builder->addDefinitions([
+            'display' => \DI\object('\\KitchenKiosk\\Utility\\Display'),
+            'security' => \DI\object('\\KitchenKiosk\\Utility\\Security')
+        ]);
     } 
 
     /*
      * Create logger, define channel, set up streams, and store in DIC
      */
     private function prepareLogging(){
-        $this->c['logger'] = function ($c) {
-            $logger = new Logger($c['config']->get("logs.primary_channel")); # Main channel
-            # PSR 3 log message formatting for all handlers
-            $logger->pushProcessor(new PsrLogMessageProcessor());
-            return $logger;
-        }; 
-        // display logging output to command line if enabled in config
-        if ( (bool)$this->c['config']->get("debug.cli") ){
-            $this->c->extend('logger', function ($logger, $c) {
-                $display = $c['display'];
-                $width = getenv('COLUMNS') ?: 60; # Console width from env, or 60 chars.
-                $separator = str_repeat('━', $width); # A nice separator line
-                $format  = $display->cliFormat("bold");
-                $format .= $display->cliFormat("green") . "[%datetime%]";
-                $format .= $display->cliFormat("white") . "[%channel%.";
-                $format .= $display->cliFormat("yellow") . "%level_name%";
-                $format .= $display->cliFormat("white") . "]";
-                $format .= $display->cliFormat("blue") . "[UID:%extra.uid%]";
-                $format .= $display->cliFormat("purple") . "[PID:%extra.process_id%]";
-                $format .= $display->cliFormat("reset") . ":".PHP_EOL;
-                $format .= "%message%".PHP_EOL;
-                $format .= $display->cliFormat("gray") . $separator . $display->cliFormat("reset") . PHP_EOL;
-                $handler = new StreamHandler($c['config']->get("logs.stream_handler"));
-                $handler->pushProcessor(new UidProcessor(24));
-                $handler->pushProcessor(new ProcessIdProcessor());
-                $dateFormat = 'H:i:s'; # Just the time for command line
-                $allowInlineLineBreaks = (bool)$c['config']->get("logs.allow_inline_linebreaks");
-                $formatter = new LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
-                $handler->setFormatter($formatter);
-                $logger->pushHandler($handler);
+        //use PHP-DI
+        $this->builder->addDefinitions([
+            'logger' => function($c){
+                $logger = new \Monolog\Logger($c->get('config')->get("logs.primary_channel")); # Main channel
+                // PSR 3 log message formatting for all handlers
+                $logger->pushProcessor(new \Monolog\Processor\PsrLogMessageProcessor());
+                $filename = $c->get('config')->get("directories.root") . $c->get('config')->get("directories.log") . $c->get('config')->get("logs.default_log");
+                $handler = new \Monolog\Handler\StreamHandler($filename, \Monolog\Logger::NOTICE, true, 0644, true);
+                $format = "[%datetime%][%channel%][%level_name%][%extra.uid%]: %message%\n";
+                $handler->setFormatter(new \Monolog\Formatter\LineFormatter($format, 'Y-m-d H:i:s'));
+                $handler->pushProcessor(new \Monolog\Processor\UidProcessor(24));
+                $logger->pushHandler(new \Monolog\Handler\BufferHandler($handler));
+//TODO -- CLI
+                //start CLI
+                if ( (bool)$c->get('config')->get("debug.cli") ){
+                    $display = $c->get('display');
+                    $width = getenv('COLUMNS') ?: 60; # Console width from env, or 60 chars.
+                    $separator = str_repeat('━', $width); # A nice separator line
+                    $format = $this->c->call(['display','cliFormat'], ['color' => 'bold']);                
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'green']) . "[%datetime%]";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'white']) . "[%channel%.";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'yellow']) . "%level_name%";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'white']) . "]";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'blue']) . "[UID:%extra.uid%]";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'purple']) . "[PID:%extra.process_id%]";
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'reset']) . ":".PHP_EOL;
+                    $format .= "%message%".PHP_EOL;
+                    $format .= $this->c->call(['display','cliFormat'], ['color' => 'gray']) . $separator . $this->c->call(['display','cliFormat'], ['color' => 'reset']) . PHP_EOL;
+                    $handler = new \Monolog\Handler\StreamHandler($c->get('config')->get("logs.stream_handler"));
+                    $handler->pushProcessor(new \Monolog\Processor\UidProcessor(24));
+                    $handler->pushProcessor(new \Monolog\Processor\ProcessIdProcessor());
+                    $dateFormat = 'H:i:s'; // Just the time for command line
+                    $allowInlineLineBreaks = (bool)$c->get('config')->get("logs.allow_inline_linebreaks");
+                    $formatter = new \Monolog\Formatter\LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
+                    $handler->setFormatter($formatter);
+                    $logger->pushHandler($handler);
+                }
+                //end CLI
+                LoggerRegistry::addLogger($logger);
+                LoggerErrorHandler::register($logger);
                 return $logger;
-            });
-        }
-        // primary logging handler; rotating log file inside BufferHandler
-        $this->c->extend('logger', function ($logger, $c) {
-            $filename = $c['config']->get("directories.root") . $c['config']->get("directories.log") . $c['config']->get("logs.default_log");
-            $handler = new RotatingFileHandler($filename, 24, Logger::NOTICE, true, 0644, true);
-            $handler->setFilenameFormat('{filename}-{date}', 'Y-m-d');
-            $format = "[%datetime%][%channel%][%level_name%][%extra.uid%]: %message%\n";
-            $handler->setFormatter(new LineFormatter($format, 'U'));
-            $handler->pushProcessor(new UidProcessor(24));
-            $logger->pushHandler(new BufferHandler($handler));
-            return $logger;
-        });
-        // finally register the loggers
-        $this->c->extend('logger', function ($logger, $c) {
-            LoggerRegistry::addLogger($logger);
-            LoggerErrorHandler::register($logger);
-            return $logger;
-        });
+            }
+        ]);
     }
 
     /*
      * Establish error handler
      */
     private function prepareErrorHandler(){
-        $this->c['whoops'] = function ($c) {
+        $this->p['whoops'] = function ($p) {
             // stop PHP from polluting exception messages with html that Whoops escapes and prints.
             ini_set('html_errors', false);
             return new \Whoops\Run; 
         };
         // Pretty page handler
-        $this->c->extend('whoops', function ($whoops, $c) {
+        $this->p->extend('whoops', function ($whoops, $p) {
             $handler = new \Whoops\Handler\PrettyPageHandler();
             //$handler->setEditor('sublime');
             $handler->setEditor('xdebug');
@@ -174,24 +178,24 @@ class Main {
             return $whoops;
         });
         // Plain text handler for our logger
-        $this->c->extend('whoops', function ($whoops, $c) {
+        $this->p->extend('whoops', function ($whoops, $p) {
             $handler = new \Whoops\Handler\PlainTextHandler();
             $handler->onlyForCommandLine(false);
             $handler->outputOnlyIfCommandLine(false);
             $handler->loggerOnly(true);
-            $handler->setLogger($c['logger']);
+            $handler->setLogger($p['logger']);
             $whoops->pushHandler($handler);
             return $whoops;
         });
         // Responds to AJAX requests with JSON formatted exceptions
-        $this->c->extend('whoops', function ($whoops, $c) {
+        $this->p->extend('whoops', function ($whoops, $p) {
             $handler = new \Whoops\Handler\JsonResponseHandler();
             $handler->onlyForAjaxRequests(true);
             $handler->addTraceToOutput(true);
             $whoops->pushHandler($handler);
             return $whoops;
         });
-        $whoops = $this->c['whoops'];
+        $whoops = $this->p['whoops'];
         $whoops->register();
     }
 
@@ -199,51 +203,43 @@ class Main {
      * Initialize a PDO handle and store it in DIC
      */
     private function prepareDatabaseHandler(){
-        $this->c['PDO'] = function($c){
-            try{
-                $dbhost = $c['config']->get("database.host");
-                $dbname = $c['config']->get("database.database");
-                $dbuser = $c['config']->get("database.user");
-                $dbpass = $c['config']->get("database.password");
-                return new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
-            } catch ( \PDOException $e ){
-                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
+        $this->builder->addDefinitions([
+            'PDO' => function($c){
+                try{
+                    $dbhost = $c->get('config')->get("database.host");
+                    $dbname = $c->get('config')->get("database.database");
+                    $dbuser = $c->get('config')->get("database.user");
+                    $dbpass = $c->get('config')->get("database.password");
+                    $PDO = new \PDO("mysql:host=" . $dbhost . ";dbname=" . $dbname, $dbuser, $dbpass);
+                    $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                    return $PDO;
+                } catch ( \PDOException $e ){
+                    throw new \KitchenKiosk\Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
+                }
             }
-        };
-        $this->c->extend('PDO', function($PDO, $c) {
-            try {
-                $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-                return $PDO;
-            } catch ( \PDOException $e ){
-                throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
-            }
-        });
+        ]);
     }
 
     /*
     * Load final configuration options from database
     */
     private function finalizeConfig(){
-        $config = $this->c['config'];
-        $this->c['DB'] = function($c){
-            $PDO = $c['PDO'];
-            return new Database\DB($PDO);
-        };
-        $DB = $this->c['DB'];
+        $common = new \KitchenKiosk\Database\Common($this->c->get('PDO'));
         try {
-            $conf = $DB->loadConfig();
+            $conf = $common->loadConfig();
         } catch ( \PDOException $e ){
-            throw new DatabaseException(__CLASS__ . " " . __METHOD__ . " " . $e->getMessage());
+            throw new \KitchenKiosk\Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
         }
         if ( count($conf) > 0 ){
             foreach($conf as $e){
-                $config->set($e['cluster'] . "." . $e['name'],$e['value']);
+                $this->c->call(['config','set'], ['key' => $e['cluster'] . "." . $e['name'], 'value' => $e['value']]);
             }
             // No longer need database connection information residing in memory
-            $config->set('database.host',null);
-            $config->set('database.database',null);
-            $config->set('database.user',null);
-            $config->set('database.password',null);
+            //TODO -- perhaps this is causing the DI empty parameter problems
+            //$this->c->call(['config','set'], ['key' => 'database.host', 'value' => null]);
+            //$this->c->call(['config','set'], ['key' => 'database.database', 'value' => null]);
+            //$this->c->call(['config','set'], ['key' => 'database.user', 'value' => null]);
+            //$this->c->call(['config','set'], ['key' => 'database.password', 'value' => null]);
         } else {
             throw new \UnexpectedValueException("No database configuration");
         }
