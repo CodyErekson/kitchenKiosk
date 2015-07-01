@@ -20,10 +20,12 @@
 
     $r = new Restler(true,true);
     $r->addAPIClass('Luracast\\Restler\\Resources');
-    $r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
     $r->addAPIClass('KitchenKiosk\\Drone\\HoneywellDrone','drone');
-    $r->addAPIClass('KitchenKiosk\\Output\\DataTable','data');
-    $r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
+
+    //TODO -- re-enable these once the DIC is working
+    //$r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
+    //$r->addAPIClass('KitchenKiosk\\Output\\DataTable','data');
+    //$r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
     $r->handle();
 
 ?>
