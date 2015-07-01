@@ -16,31 +16,26 @@ use KitchenKiosk\Exception\DatabaseException;
  */
 class HoneywellDrone extends Drone {
 
-    private $DB; // Database handle
     private $client;
-    private $cookiePlugin; 
+    private $cookiePlugin;
 
     /*
      * Set database handle and config as member variables
      *
      * @param \Noodlehaus\Config $config
      *
-     * @param \KitchenKiosk\Database\DB $DB
+     * @param \Monolog\Logger $logger
      *
      */
-    public function __construct(\Noodlehaus\Config $config, \KitchenKiosk\Database\DB $DB, \Monolog\Logger $logger){
+    public function __construct(\Noodlehaus\Config $config, \Monolog\Logger $logger){
         $this->config = $config;
         //Get the Honeywell connection details from configuration
-        $this->DB = $DB;
   
         // Call parent constructor
         parent::__construct($config);
 
         // Spawn the client object
         $this->spawn($logger);
-        
-        // TODO -- add client to nenber variable. $this->
-
     }
 
 
@@ -80,7 +75,65 @@ class HoneywellDrone extends Drone {
         $request = $this->client->post('portal/', $headers, $body);
         $response = $request->send();
         $cookiesArray = $this->cookiePlugin->getCookieJar()->all('https://' . $this->config->get("honeywell.host") . '/');
-        //$cookie = $cookiesArray[0]->toArray();
+    }
+
+    /*
+     * Get the device ID from current system configuration
+     *
+     * @return int $deviceId
+     */
+    public function deviceId(){
+       $deviceId = (int)$this->config->get("honeywell.deviceId");
+       return $deviceId;
+    }
+
+    /*
+     * Retrieve all current data from Honeywell Total Connect Comfort
+     *
+     * @params int $deviceId
+     *
+     * @params \PDO $PDO Database handle
+     *
+     * @return string JSON formatted string containing all data returned by TCC API
+     */
+    public function status($deviceId, \PDO $PDO){
+        $headers = [
+            'Accept' => '*/*',
+            'DNT' => '1',
+            'Accept-Encoding' => 'plain',
+            'Cache-Control' => 'max-age=0',
+            'Accept-Language' => 'en-US,en,q=0.8',
+            'Connection' => 'keep-alive',
+            'X-Requested-With' => 'XMLHttpRequest'
+        ];
+        $request = $this->client->get('portal/Device/CheckDataSession/' . (string)$deviceId, $headers, array());
+        $response = $request->send();
+        $raw = $response->getBody();
+        if ( !$jraw = json_decode($raw, true) ){
+            throw new \UnexpectedValueException("Unable to retrieve status from Honeywell device with the id " . $deviceId . ".");
+        }
+        $wanted = [
+            'DispTemperature' => $jraw['latestData']['uiData']['DispTemperature'],
+            'HeatSetpoint' => $jraw['latestData']['uiData']['HeatSetpoint'],
+            'CoolSetpoint' => $jraw['latestData']['uiData']['CoolSetpoint'],
+            'DisplayUnits' => $jraw['latestData']['uiData']['DisplayUnits'],
+            'VacationHold' => $jraw['latestData']['uiData']['VacationHold'],
+            'HeatNextPeriod' => $jraw['latestData']['uiData']['HeatNextPeriod'],
+            'CoolNextPeriod' => $jraw['latestData']['uiData']['CoolNextPeriod'],
+            'ScheduleHeatSp' => $jraw['latestData']['uiData']['ScheduleHeatSp'],
+            'ScheduleCoolSp' => $jraw['latestData']['uiData']['ScheduleCoolSp'],
+            'SystemSwitchPosition' => $jraw['latestData']['uiData']['SystemSwitchPosition'],
+            'IndoorHumidity' => $jraw['latestData']['uiData']['IndoorHumidity'],
+            'OutdoorTemperature' => $jraw['latestData']['uiData']['OutdoorTemperature'],
+            'OutdoorHumidity' => $jraw['latestData']['uiData']['OutdoorHumidity'],
+            'OutdoorHumidityAvailable' => $jraw['latestData']['uiData']['OutdoorHumidityAvailable'],
+            'OutdoorTemperatureAvailable' => $jraw['latestData']['uiData']['OutdoorTemperatureAvailable'],
+            'FanMode' => $jraw['latestData']['fanData']['fanMode']
+        ];
+        $DataTable = new \KitchenKiosk\Database\DataTable($PDO);
+        $uid = $DataTable->store($this->config->get("honeywell.origin"), json_encode($wanted));
+        $wanted['uid'] = $uid;
+        return json_encode($wanted);
     }
 
 }
