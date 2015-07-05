@@ -1,9 +1,9 @@
 <?php
 
-    namespace KitchenKiosk;
-
     use Luracast\Restler\Scope;
     use Luracast\Restler\Restler;
+    use KitchenKiosk\Main;
+    use KitchenKiosk\Database\DataTable;
 
     require_once __DIR__.'/vendor/autoload.php';
 
@@ -13,19 +13,15 @@
 
     $c = $main->c;
 
-    Scope::register('KitchenKiosk\\Drone\\HoneywellDrone', function () use ($c) { 
-        return $c->get('KitchenKiosk\\Drone\\HoneywellDrone');
-        //return new KitchenKiosk\Drone\HoneywellDrone($c->get('config'), $c->get('logger'));
+    Scope::register('KitchenKiosk\\Database\\DataTable', function () use ($c) {
+        return new DataTable($c->get('PDO'));
     });
 
-    $r = new Restler(true,true);
+    $r = new Restler(true);
     $r->addAPIClass('Luracast\\Restler\\Resources');
-    $r->addAPIClass('KitchenKiosk\\Drone\\HoneywellDrone','drone');
-
-    //TODO -- re-enable these once the DIC is working
-    //$r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
-    //$r->addAPIClass('KitchenKiosk\\Output\\DataTable','data');
-    //$r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
+    $r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
+    $r->addAPIClass('KitchenKiosk\\Database\\DataTable','data');
+    $r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
     $r->handle();
 
 ?>
