@@ -16,6 +16,8 @@ composer.phar
 composer.lock
 cache/
 api/guide
+request.php
+/api/droneTest.php
 
 # Compiled source #
 ###################
