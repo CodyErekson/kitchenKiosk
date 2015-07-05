@@ -52,9 +52,9 @@ class Main {
         $this->p = new Container();
 
         $this->builder = new \DI\ContainerBuilder;
-        $cache = new \Doctrine\Common\Cache\ApcCache();
-        $cache->setNamespace('KitchenKiosk');
-        $this->builder->setDefinitionCache($cache);
+        //$cache = new \Doctrine\Common\Cache\ApcCache();
+        //$cache->setNamespace('KitchenKiosk');
+        //$this->builder->setDefinitionCache($cache);
 
         // load the config file values; later we'll get the rest from the database
         $this->prepareConfig();
@@ -63,7 +63,7 @@ class Main {
         // set up application logging
         $this->prepareLogging();
         // register error/exception handler
-        //$this->prepareErrorHandler();
+        $this->prepareErrorHandler();
         // initialize database handle
         $this->prepareDatabaseHandler();
 
@@ -90,10 +90,6 @@ class Main {
      * Load the config file and store in DIC
      */
     private function prepareConfig(){
-        $this->p['configFile'] = $this->configFile;
-        $this->p['config'] = function($p){
-            return Config::load($p['configFile']);
-        };
         $this->builder->addDefinitions([
             'configFile' => \DI\string($this->configFile),
             'config' => \DI\object('\\Noodlehaus\\Config')->constructor(\DI\get('configFile'))
@@ -106,8 +102,8 @@ class Main {
     private function prepareDependency(){
         // Utility functions
         $this->builder->addDefinitions([
-            'display' => \DI\object('\\KitchenKiosk\\Utility\\Display'),
-            'security' => \DI\object('\\KitchenKiosk\\Utility\\Security')
+            'display' => \DI\object('KitchenKiosk\\Utility\\Display'),
+            'security' => \DI\object('KitchenKiosk\\Utility\\Security')
         ]);
     } 
 
@@ -164,6 +160,7 @@ class Main {
      * Establish error handler
      */
     private function prepareErrorHandler(){
+        /*
         $this->p['whoops'] = function ($p) {
             // stop PHP from polluting exception messages with html that Whoops escapes and prints.
             ini_set('html_errors', false);
@@ -197,6 +194,7 @@ class Main {
         });
         $whoops = $this->p['whoops'];
         $whoops->register();
+        */
     }
 
     /*
@@ -214,7 +212,7 @@ class Main {
                     $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
                     return $PDO;
                 } catch ( \PDOException $e ){
-                    throw new \KitchenKiosk\Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
+                    throw new Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
                 }
             }
         ]);
@@ -224,11 +222,11 @@ class Main {
     * Load final configuration options from database
     */
     private function finalizeConfig(){
-        $common = new \KitchenKiosk\Database\Common($this->c->get('PDO'));
+        $common = new Database\Common($this->c->get('PDO'));
         try {
             $conf = $common->loadConfig();
         } catch ( \PDOException $e ){
-            throw new \KitchenKiosk\Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
+            throw new Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
         }
         if ( count($conf) > 0 ){
             foreach($conf as $e){
