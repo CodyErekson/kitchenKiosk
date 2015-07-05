@@ -30,7 +30,7 @@ class HoneywellDrone extends Drone {
     public function __construct(\Noodlehaus\Config $config, \Monolog\Logger $logger){
         $this->config = $config;
         //Get the Honeywell connection details from configuration
-  
+ 
         // Call parent constructor
         parent::__construct($config);
 
