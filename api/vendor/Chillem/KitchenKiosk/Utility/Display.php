@@ -4,13 +4,19 @@ namespace KitchenKiosk\Utility;
 
 /*
  * Utility methods used to generate page or CLI display elements
- * No database calls in here
+ *
+ * @class Display
+ *
  */
 class Display {
 
     /**
      * Clear the cli screen
+     *
+     * Return command line string that will clear the screen when printed; cli only
      * 
+     * @access private
+     *
      * @status 405 Method Not Allowed
      */
     public function cls() {
@@ -20,7 +26,9 @@ class Display {
     /**
      * Get a cli color code by name
      *
-     * @param string $color
+     * Return string containing command line formatting functions to change text color and weight
+     *
+     * @param string $color Accepts: gray, green, yellow, blue, purple, white, bold, reset
      *
      * @return string
      */
@@ -42,11 +50,13 @@ class Display {
     }
 
     /**
-     *  Determine the suffix to append to the end of a number for display purposes
+     * Append ordinal suffix to number
      *
-     *  @param int $number Input number
+     * Determine the ordinal suffix (st, nd, th, etc) to append to the end of a number for display purposes
      *
-     *  @return string Number with ordinal suffix appended
+     * @param int $number Input number
+     *
+     * @return string Number with ordinal suffix appended
      */
     public function ordinalSuffix($number){
         $ones = $number % 10;
@@ -74,7 +84,10 @@ class Display {
     /**
      * Generate a random string
      *
+     * Return a randomly generated string of the requested length using the allowed characters
+     *
      * @param int $length Length of output string
+     *
      * @param string $chars Character pool to draw from
      *
      * @return string
