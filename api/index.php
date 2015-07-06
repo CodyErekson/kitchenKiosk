@@ -17,10 +17,10 @@
         return new DataTable($c->get('PDO'));
     });
 
-    $r = new Restler(true);
+    $r = new Restler();
     $r->addAPIClass('Luracast\\Restler\\Resources');
-    $r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
     $r->addAPIClass('KitchenKiosk\\Database\\DataTable','data');
+    $r->addAPIClass('KitchenKiosk\\Utility\\Display','display');
     $r->addAuthenticationClass('KitchenKiosk\\System\\TokenAuth');
     $r->handle();
 
