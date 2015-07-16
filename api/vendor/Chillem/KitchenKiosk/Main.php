@@ -5,11 +5,7 @@ namespace KitchenKiosk;
 use KitchenKiosk\Utility;
 use KitchenKiosk\Database\Common;
 use KitchenKiosk\Exception\DatabaseException;
-
 use DI\ContainerBuilder;
-use Pimple\Container;
-use Noodlehaus\Config;
-
 use Monolog\Logger;
 use Monolog\Registry as LoggerRegistry;
 use Monolog\ErrorHandler as LoggerErrorHandler;
@@ -38,7 +34,7 @@ class Main {
 
     private $configFile;
 
-    public $p; // a dependency injection container
+    //public $p; // a dependency injection container
 
     private $builder;
     public $c; // PHP-DI dependency injection container
@@ -49,9 +45,9 @@ class Main {
             throw new \UnexpectedValueException("Config file " . $this->configFile . " does not exist.");
         }
         //create DIC
-        $this->p = new Container();
+        //$this->p = new Container();
 
-        $this->builder = new \DI\ContainerBuilder;
+        $this->builder = new ContainerBuilder;
         //$cache = new \Doctrine\Common\Cache\ApcCache();
         //$cache->setNamespace('KitchenKiosk');
         //$this->builder->setDefinitionCache($cache);
@@ -63,7 +59,7 @@ class Main {
         // set up application logging
         $this->prepareLogging();
         // register error/exception handler
-        $this->prepareErrorHandler();
+        //$this->prepareErrorHandler();
         // initialize database handle
         $this->prepareDatabaseHandler();
 
@@ -114,16 +110,15 @@ class Main {
         //use PHP-DI
         $this->builder->addDefinitions([
             'logger' => function($c){
-                $logger = new \Monolog\Logger($c->get('config')->get("logs.primary_channel")); # Main channel
+                $logger = new Logger($c->get('config')->get("logs.primary_channel")); # Main channel
                 // PSR 3 log message formatting for all handlers
-                $logger->pushProcessor(new \Monolog\Processor\PsrLogMessageProcessor());
+                $logger->pushProcessor(new PsrLogMessageProcessor());
                 $filename = $c->get('config')->get("directories.root") . $c->get('config')->get("directories.log") . $c->get('config')->get("logs.default_log");
-                $handler = new \Monolog\Handler\StreamHandler($filename, \Monolog\Logger::NOTICE, true, 0644, true);
+                $handler = new StreamHandler($filename, Logger::NOTICE, true, 0644, true);
                 $format = "[%datetime%][%channel%][%level_name%][%extra.uid%]: %message%\n";
-                $handler->setFormatter(new \Monolog\Formatter\LineFormatter($format, 'Y-m-d H:i:s'));
-                $handler->pushProcessor(new \Monolog\Processor\UidProcessor(24));
-                $logger->pushHandler(new \Monolog\Handler\BufferHandler($handler));
-//TODO -- CLI
+                $handler->setFormatter(new LineFormatter($format, 'Y-m-d H:i:s'));
+                $handler->pushProcessor(new UidProcessor(24));
+                $logger->pushHandler(new BufferHandler($handler));
                 //start CLI
                 if ( (bool)$c->get('config')->get("debug.cli") ){
                     $display = $c->get('display');
@@ -139,12 +134,12 @@ class Main {
                     $format .= $this->c->call(['display','cliFormat'], ['color' => 'reset']) . ":".PHP_EOL;
                     $format .= "%message%".PHP_EOL;
                     $format .= $this->c->call(['display','cliFormat'], ['color' => 'gray']) . $separator . $this->c->call(['display','cliFormat'], ['color' => 'reset']) . PHP_EOL;
-                    $handler = new \Monolog\Handler\StreamHandler($c->get('config')->get("logs.stream_handler"));
-                    $handler->pushProcessor(new \Monolog\Processor\UidProcessor(24));
-                    $handler->pushProcessor(new \Monolog\Processor\ProcessIdProcessor());
+                    $handler = new StreamHandler($c->get('config')->get("logs.stream_handler"));
+                    $handler->pushProcessor(new UidProcessor(24));
+                    $handler->pushProcessor(new ProcessIdProcessor());
                     $dateFormat = 'H:i:s'; // Just the time for command line
                     $allowInlineLineBreaks = (bool)$c->get('config')->get("logs.allow_inline_linebreaks");
-                    $formatter = new \Monolog\Formatter\LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
+                    $formatter = new LineFormatter($format, $dateFormat, $allowInlineLineBreaks);
                     $handler->setFormatter($formatter);
                     $logger->pushHandler($handler);
                 }
@@ -159,8 +154,8 @@ class Main {
     /*
      * Establish error handler
      */
+    /*
     private function prepareErrorHandler(){
-        /*
         $this->p['whoops'] = function ($p) {
             // stop PHP from polluting exception messages with html that Whoops escapes and prints.
             ini_set('html_errors', false);
@@ -194,8 +189,8 @@ class Main {
         });
         $whoops = $this->p['whoops'];
         $whoops->register();
-        */
     }
+    */
 
     /*
      * Initialize a PDO handle and store it in DIC
@@ -212,7 +207,7 @@ class Main {
                     $PDO->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
                     return $PDO;
                 } catch ( \PDOException $e ){
-                    throw new Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
+                    throw new DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
                 }
             }
         ]);
@@ -222,11 +217,11 @@ class Main {
     * Load final configuration options from database
     */
     private function finalizeConfig(){
-        $common = new Database\Common($this->c->get('PDO'));
+        $common = new Common($this->c->get('PDO'));
         try {
             $conf = $common->loadConfig();
         } catch ( \PDOException $e ){
-            throw new Exception\DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
+            throw new DatabaseException(__CLASS__ . " " . __METHOD__  . " " . $e->getMessage());
         }
         if ( count($conf) > 0 ){
             foreach($conf as $e){
