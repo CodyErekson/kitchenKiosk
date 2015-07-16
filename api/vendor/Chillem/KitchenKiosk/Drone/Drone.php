@@ -8,7 +8,7 @@ namespace KitchenKiosk\Drone;
 
 abstract class Drone {
 
-    private $config; // global config object
+    protected $config; // global config object
 
     public function __construct(\Noodlehaus\Config $config){
         $this->config = $config;
@@ -20,5 +20,6 @@ abstract class Drone {
 
     abstract protected function spawn(\Monolog\Logger $logger);
 
-
 }
+
+?>
