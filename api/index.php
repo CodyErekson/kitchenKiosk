@@ -2,10 +2,16 @@
 
     use Luracast\Restler\Scope;
     use Luracast\Restler\Restler;
+    use Luracast\Restler\Resources;
+    use Luracast\Restler\Defaults;
     use KitchenKiosk\Main;
     use KitchenKiosk\Database\DataTable;
 
     require_once __DIR__.'/vendor/autoload.php';
+
+    Resources::$useFormatAsExtension = false;
+    Defaults::$crossOriginResourceSharing = true;
+    Defaults::$accessControlAllowOrigin = '*';
 
     $file = __DIR__ . "/config.json";
 
