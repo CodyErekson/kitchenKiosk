@@ -12,7 +12,7 @@
         }
     ],
     "require": {
-        "php": ">= 5.4.0",
+        "php": ">= 5.5.0",
         "symfony/yaml": "~2.5",
         "monolog/monolog": "1.13.*@dev",
         "luracast/restler": "3.0.0-RC6",
@@ -20,10 +20,8 @@
         "hassankhan/config": "0.8.2",
         "swiftmailer/swiftmailer": "5.4.0",
         "ruudk/twitter-oauth": "1.0.*",
-        "raveren/kint": "1.0.2",
         "firebase/php-jwt": "^2.0",
         "bshaffer/oauth2-server-php":"v1.0",
-        "pimple/pimple": "~3.0",
         "filp/whoops": "^1.1",
         "maximebf/debugbar": ">=1.0.0",
         "guzzle/guzzle": "3.9.3",
